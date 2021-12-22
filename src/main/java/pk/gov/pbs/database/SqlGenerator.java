@@ -62,6 +62,11 @@ public class SqlGenerator {
                         || type == Boolean.class
         )
             return "[BIT]";
+        else if (
+                type == byte.class
+                || type == Byte.class
+        )
+            return "[TINYINT]";
 
         return "[BINARY]";
     }

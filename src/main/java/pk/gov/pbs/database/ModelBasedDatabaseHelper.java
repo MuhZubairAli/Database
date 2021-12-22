@@ -464,7 +464,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         T result = null;
 
         if (sql.contains("{:table}"))
-            sql = sql.replace("{:table}", "`" + outputType + "`");
+            sql = sql.replace("{:table}", "`" + outputType.getSimpleName() + "`");
 
         Cursor c = getReadableDatabase().rawQuery(sql, selectionArgs);
         if (c.moveToFirst()){
