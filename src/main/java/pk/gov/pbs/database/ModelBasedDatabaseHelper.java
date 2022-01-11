@@ -14,6 +14,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 
 import pk.gov.pbs.database.annotations.Default;
 import pk.gov.pbs.database.annotations.NotNull;
@@ -407,8 +408,9 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
     public  <T> List<T> selectRowsBySQL(Class<T> outputType, String sql, String[] selectionArgs) {
         List<T> result = new ArrayList<T>();
 
+        sql = sql.toLowerCase();
         if (sql.contains("{:table}"))
-            sql = sql.replace("{:table}", "`" + outputType + "`");
+            sql = sql.replace("{:table}", "`" + outputType.getSimpleName() + "`");
 
         Cursor c = getReadableDatabase().rawQuery(sql, selectionArgs);
         if (c.moveToFirst()){
@@ -435,8 +437,9 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         Field keyField = mapKey == null ? DatabaseUtils.getPrimaryKeyField(outputType)
                 : outputType.getField(mapKey);
 
+        sql = sql.toLowerCase();
         if (sql.contains("{:table}"))
-            sql = sql.replace("{:table}", "`" + outputType + "`");
+            sql = sql.replace("{:table}", "`" + outputType.getSimpleName() + "`");
 
         Cursor c = getReadableDatabase().rawQuery(sql, selectionArgs);
         if (c.moveToFirst()){
@@ -463,6 +466,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
     public  <T> T selectRowBySQL(Class<T> outputType, String sql, String[] selectionArgs) {
         T result = null;
 
+        sql = sql.toLowerCase();
         if (sql.contains("{:table}"))
             sql = sql.replace("{:table}", "`" + outputType.getSimpleName() + "`");
 
