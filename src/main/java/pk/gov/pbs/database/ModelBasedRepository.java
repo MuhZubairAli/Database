@@ -48,7 +48,7 @@ public abstract class ModelBasedRepository {
         });
     }
 
-    public <T> Future<T> selectRow(Class<T> outputType, String selectionCriteria, String[] selectionArgs){
+    public <T> Future<T> selectRow(Class<T> outputType, String selectionCriteria, String... selectionArgs){
         return selectRowAs(
                 outputType,
                 "SELECT * FROM " + outputType.getSimpleName() + " WHERE " + selectionCriteria,
@@ -67,12 +67,12 @@ public abstract class ModelBasedRepository {
             return selectRowMultiAs(
                     outputType,
                     "SELECT * FROM " + outputType.getSimpleName(),
-                    null
+                    (String) null
             );
         }
     }
 
-    public <K, V> Future<Map<K, V>> selectRowsMapped(String mapKey, Class<V> outputClass, String selectionCriteria, String[] selectionArgs){
+    public <K, V> Future<Map<K, V>> selectRowsMapped(String mapKey, Class<V> outputClass, String selectionCriteria, String... selectionArgs){
         return dbExecutorService.submit(()->{
             try {
                 return getDatabase().selectRowsMapped(mapKey, outputClass, selectionCriteria, selectionArgs);
@@ -83,7 +83,7 @@ public abstract class ModelBasedRepository {
         });
     }
 
-    public <T> Future<T> selectColAs(Class<T> outputType, String sql, String[] args){
+    public <T> Future<T> selectColAs(Class<T> outputType, String sql, String... args){
         return dbExecutorService.submit(
                 () -> {
                     T result = null;
@@ -97,7 +97,7 @@ public abstract class ModelBasedRepository {
         );
     }
 
-    public <T> Future<List<T>> selectColMultiAs(Class<T> outputType, String sql, String[] args){
+    public <T> Future<List<T>> selectColMultiAs(Class<T> outputType, String sql, String... args){
         return getExecutorService().submit(
                 () -> {
                     Cursor cursor = getDatabase().getReadableDatabase().rawQuery(sql, args);
@@ -114,17 +114,21 @@ public abstract class ModelBasedRepository {
         );
     }
 
-    public <T> Future<T> selectRowAs(Class<T> outputType, String sql, String[] args){
+    public <T> Future<T> selectRowAs(Class<T> outputType, String sql, String... args){
         return getExecutorService().submit(
                 () -> getDatabase().selectRowBySQL(outputType,sql,args)
         );
     }
 
-    public <T> Future<List<T>> selectRowMultiAs(Class<T> outputType, String sql, String[] args){
+    public <T> Future<List<T>> selectRowMultiAs(Class<T> outputType, String sql, String... args){
         return getExecutorService().submit(
                 () -> getDatabase().selectRowsBySQL(outputType,sql,args)
         );
     }
+
+    /**
+     * Insert convenience methods with overloads
+     */
 
     public Future<Long> insert(Object object){
         return dbExecutorService.submit(
@@ -138,11 +142,19 @@ public abstract class ModelBasedRepository {
         );
     }
 
+    /**
+     * Update convenience methods with overloads
+     */
+
     public Future<Integer> update(Object object){
         return dbExecutorService.submit(
                 () -> getDatabase().update(object)
         );
     }
+
+    /**
+     * Replace convenience methods with overloads
+     */
 
     public Future<Long> replace(Object object){
         return dbExecutorService.submit(
