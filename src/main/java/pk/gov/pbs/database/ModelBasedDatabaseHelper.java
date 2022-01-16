@@ -161,7 +161,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         return o;
     }
 
-    public final <T> T extractFieldFromCursor(Class<T> type, Cursor c, Integer columnIndex) throws ClassCastException {
+    protected final <T> T extractFieldFromCursor(Class<T> type, Cursor c, Integer columnIndex) throws ClassCastException {
         T o = null;
 
         switch (type.getSimpleName()) {
@@ -171,43 +171,43 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
                 o = (T) String.valueOf(c.getString(columnIndex));
                 break;
             case "Integer":
-                o = c.isNull(c.getColumnIndex(type.getName())) ? null :
+                o = c.isNull(columnIndex) ? null :
                         (T) Integer.valueOf(c.getInt(columnIndex));
             case "int":
                 o = (T) Integer.valueOf(c.getInt(columnIndex));
                 break;
             case "Long":
-                o = c.isNull(c.getColumnIndex(type.getName())) ? null :
+                o = c.isNull(columnIndex) ? null :
                         (T) Long.valueOf(c.getLong(columnIndex));
             case "long":
                 o = (T) Long.valueOf(c.getLong(columnIndex));
                 break;
             case "Double":
-                o = c.isNull(c.getColumnIndex(type.getName())) ? null :
+                o = c.isNull(columnIndex) ? null :
                         (T) Double.valueOf(c.getDouble(columnIndex));
             case "double":
                 o = (T) Double.valueOf(c.getDouble(columnIndex));
                 break;
             case "Boolean":
-                o = c.isNull(c.getColumnIndex(type.getName())) ? null :
+                o = c.isNull(columnIndex) ? null :
                         (T) Boolean.valueOf(c.getInt(columnIndex)==1);
             case "boolean":
                 o = (T) Boolean.valueOf(c.getInt(columnIndex)==1);
                 break;
             case "Float":
-                o = c.isNull(c.getColumnIndex(type.getName())) ? null :
+                o = c.isNull(columnIndex) ? null :
                         (T) Float.valueOf(c.getFloat(columnIndex));
             case "float":
                 o = (T) Float.valueOf(c.getFloat(columnIndex));
                 break;
             case "Short":
-                o = c.isNull(c.getColumnIndex(type.getName())) ? null :
+                o = c.isNull(columnIndex) ? null :
                         (T) Short.valueOf(c.getShort(columnIndex));
             case "short":
                 o = (T) Short.valueOf(c.getShort(columnIndex));
                 break;
             case "Byte[]":
-                o = c.isNull(c.getColumnIndex(type.getName())) ? null :
+                o = c.isNull(columnIndex) ? null :
                         (T) c.getBlob(columnIndex);
             case "byte[]":
                 o = (T) c.getBlob(columnIndex);
