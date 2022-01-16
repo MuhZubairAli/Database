@@ -89,6 +89,10 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
             if (!Modifier.isPrivate(f.getModifiers())) {
                 if (!f.isAccessible())
                     f.setAccessible(true);
+
+                if (c.getColumnIndex(f.getName()) == -1)
+                    continue;
+
                 switch (f.getType().getSimpleName()) {
                     case "char":
                     case "Character":
@@ -488,5 +492,43 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         String sql = String.format("SELECT * FROM `%s` WHERE %s", outputType.getSimpleName(), selectionCriteria);
         return selectRowBySQL(outputType, sql, selectionArgs);
 
+    }
+
+    public  <K,V> HashMap<K, List<V>> selectGroupedRowsBySQL(String mapKey, Class<V> outputType, String sql, String[] selectionArgs) throws NoSuchFieldException {
+        HashMap<K, List<V>> result = new HashMap<>();
+        Field keyField = outputType.getField(mapKey);
+
+        sql = sql.toLowerCase();
+        if (sql.contains("{:table}"))
+            sql = sql.replace("{:table}", "`" + outputType.getSimpleName() + "`");
+
+        Cursor c = getReadableDatabase().rawQuery(sql, selectionArgs);
+        if (c.moveToFirst()){
+            do {
+                try {
+                    V obj = extractObjectFromCursor(outputType, c);
+                    if (keyField.get(obj) != null) {
+                        if (result.containsKey((K) keyField.get(obj))) {
+                            result.get((K) keyField.get(obj)).add(obj);
+                        } else {
+                            List<V> vList = new ArrayList<>();
+                            vList.add(obj);
+                            result.put((K) keyField.get(obj), vList);
+                        }
+                    }
+                } catch (IllegalAccessException e) {
+                    ExceptionReporter.printStackTrace(e);
+                } catch (InstantiationException e) {
+                    ExceptionReporter.printStackTrace(e);
+                }
+            } while(c.moveToNext());
+        }
+        c.close();
+        return result;
+    }
+
+    public <K, V> HashMap<K, List<V>> selectGroupedRows(String mapKey, Class<V> outputType, String selectionCriteria, String[] selectionArgs) throws NoSuchFieldException {
+        String sql = String.format("SELECT * FROM `%s` WHERE %s", outputType.getSimpleName(), selectionCriteria);
+        return selectGroupedRowsBySQL(mapKey, outputType, sql, selectionArgs);
     }
 }
