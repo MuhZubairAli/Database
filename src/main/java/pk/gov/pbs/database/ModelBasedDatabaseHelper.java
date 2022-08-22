@@ -87,11 +87,11 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         T o = type.newInstance();
         for (Field f : type.getFields()){
             if (!Modifier.isPrivate(f.getModifiers())) {
-                if (!f.isAccessible())
-                    f.setAccessible(true);
-
                 if (c.getColumnIndex(f.getName()) == -1)
                     continue;
+
+                if (!f.isAccessible())
+                    f.setAccessible(true);
 
                 switch (f.getType().getSimpleName()) {
                     case "char":
