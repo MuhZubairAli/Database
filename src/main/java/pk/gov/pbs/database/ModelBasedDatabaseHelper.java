@@ -433,7 +433,10 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
     }
 
     public <T> List<T> selectRows(Class<T> outputType, String selectionCriteria, String[] selectionArgs){
-        return selectRowsBySQL(outputType, "SELECT * FROM `"+outputType.getSimpleName()+"` WHERE "+selectionCriteria, selectionArgs);
+        String sql = "SELECT * FROM `"+outputType.getSimpleName()+"`";
+        if (selectionCriteria != null && !selectionCriteria.isEmpty())
+            sql += " WHERE "+selectionCriteria;
+        return selectRowsBySQL(outputType, sql, selectionArgs);
     }
 
     public  <K,V> HashMap<K,V> selectRowsMappedBySQL(String mapKey, Class<V> outputType, String sql, String[] selectionArgs) throws NoSuchFieldException {
