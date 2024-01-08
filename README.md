@@ -1,5 +1,5 @@
 # Database Module for Android
-  This is the Simplest ORM for Android which has support for API >= 17. It supports automatic Local Database creation from the Models list and has the utility to generate TSQL scripts for databases from given models. Currently, it supports CRUD operations for Database.
+  This is the Simplest ORM for Android which has support for API >= 17. It supports automatic Local Database creation from the Models list and has the utility to generate TSQL scripts for databases from given models. Currently, it supports CRUD operations for the Database.
 It makes use of the following Annotations
   - PrimaryKey (autogenerate = false): for local database
   - SqlPrimaryKey (autogenerate = false, seed = 1, increment = 1) : for TSQL script
@@ -9,6 +9,7 @@ It makes use of the following Annotations
   - SqlDataType(value = ""): for TSQL special datatypes
   - NotNull: for both local database and TSQL
   - Table(name = "", version = 1): for both local database and TSQL
+  - SerializedName(value="") for both local database and TSQL (This annotation is from GSON library for setting different name)
 
 ## Supoort for ModelBasedFactory
   This module also supports ModelBasedFactory Design Pattern for Database with inbuilt ExecutorService and all necessary helper functions for CRUD operations.
@@ -17,5 +18,5 @@ It makes use of the following Annotations
 Multiple unique keys can be applied with different indexes. TSQL query for composite Primary Key works as expected with default ASC order for each column. But SQLite gives errors on the composite primary key.
 
 ## Todo
-  - Add support for a custom query select statement by returning List of HashMap(s) of resulting columns
+  - Add support for a custom query select statement by returning a List of HashMap(s) of resulting columns
   - Automatic consolidated version calculation for Database
