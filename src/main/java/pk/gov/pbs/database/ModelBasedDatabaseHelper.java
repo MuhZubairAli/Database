@@ -14,7 +14,6 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 
 import pk.gov.pbs.database.annotations.Default;
 import pk.gov.pbs.database.annotations.NotNull;
@@ -432,11 +431,11 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         return result;
     }
 
-    public <T> List<T> selectRows(Class<T> outputType, String selectionCriteria, String[] selectionArgs){
+    public <T> List<T> selectRows(Class<?> outputType, String selectionCriteria, String[] selectionArgs){
         String sql = "SELECT * FROM `"+outputType.getSimpleName()+"`";
         if (selectionCriteria != null && !selectionCriteria.isEmpty())
             sql += " WHERE "+selectionCriteria;
-        return selectRowsBySQL(outputType, sql, selectionArgs);
+        return (List<T>) selectRowsBySQL(outputType, sql, selectionArgs);
     }
 
     public  <K,V> HashMap<K,V> selectRowsMappedBySQL(String mapKey, Class<V> outputType, String sql, String[] selectionArgs) throws NoSuchFieldException {
