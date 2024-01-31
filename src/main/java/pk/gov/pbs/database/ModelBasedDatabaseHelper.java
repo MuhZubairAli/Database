@@ -14,6 +14,8 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import pk.gov.pbs.database.annotations.Default;
 import pk.gov.pbs.database.annotations.NotNull;
@@ -30,6 +32,32 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         super(context, dbName, null, dbVersion);
     }
 
+    private Field[] getAllFields(Class<?> modelClass, boolean includePrivateFields){
+        Map<String, Field> fieldsMap = new HashMap<>();
+        for (Field field : modelClass.getDeclaredFields()) {
+            if (includePrivateFields || !Modifier.isPrivate(field.getModifiers()))
+                fieldsMap.put(field.getName(), field);
+        }
+
+        while (modelClass != Object.class){
+            modelClass = modelClass.getSuperclass();
+            if (modelClass == null)
+                break;
+            for (Field field : modelClass.getDeclaredFields()){
+                if ((includePrivateFields || !Modifier.isPrivate(field.getModifiers())) && !fieldsMap.containsKey(field.getName()))
+                    fieldsMap.put(field.getName(), field);
+            }
+        }
+
+        Field[] fields = new Field[fieldsMap.values().size()];
+        fieldsMap.values().toArray(fields);
+        return fields;
+    }
+
+    @NonNull
+    private Field[] getAllFields(Class<?> modelClass){
+        return getAllFields(modelClass, false);
+    }
     protected final String getSQLiteDataTypeFrom(Class<?> type) throws UnsupportedDataType {
         if (
                 type == String.class
@@ -219,7 +247,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         HashMap<String, ArrayList<String>> uniqueConstraint = new HashMap<>();
         StringBuilder queryBuilder = new StringBuilder();
         queryBuilder.append("CREATE TABLE ").append(modelClass.getSimpleName()).append(" (");
-        for (Field field : modelClass.getFields()){
+        for (Field field : getAllFields(modelClass)){
             if (Modifier.isPublic(field.getModifiers()) || Modifier.isProtected(field.getModifiers())) {
                 queryBuilder.append(field.getName())
                         .append(getSQLiteDataTypeFrom(field.getType()));
