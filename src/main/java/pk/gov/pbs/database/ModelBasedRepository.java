@@ -48,34 +48,16 @@ public abstract class ModelBasedRepository {
         });
     }
 
-    public <T> Future<T> selectRow(Class<T> outputType, String selectionCriteria, String... selectionArgs){
-        return selectRowAs(
-                outputType,
-                "SELECT * FROM " + outputType.getSimpleName() + " WHERE " + selectionCriteria,
-                selectionArgs
+    public <T> Future<T> querySingle(Class<T> outputType, String selectionCriteria, String... args){
+        return getExecutorService().submit(
+                () -> getDatabase().querySingle(outputType,selectionCriteria,args)
         );
     }
 
-    public <T> Future<List<T>> selectRows(Class<T> outputType, String selectionCriteria, String... selectionArgs){
-        if (selectionCriteria != null && !selectionCriteria.isEmpty() && selectionArgs != null) {
-            return selectRowMultiAs(
-                    outputType,
-                    "SELECT * FROM " + outputType.getSimpleName() + " WHERE " + selectionCriteria,
-                    selectionArgs
-            );
-        }else {
-            return selectRowMultiAs(
-                    outputType,
-                    "SELECT * FROM " + outputType.getSimpleName(),
-                    (String) null
-            );
-        }
-    }
-
-    public <K, V> Future<Map<K, V>> selectRowsMapped(String mapKey, Class<V> outputClass, String selectionCriteria, String... selectionArgs){
+    public <K, V> Future<Map<K, V>> queryRowsMapped(String mapKey, Class<V> outputClass, String... selectionArgs){
         return dbExecutorService.submit(()->{
             try {
-                return getDatabase().selectRowsMapped(mapKey, outputClass, selectionCriteria, selectionArgs);
+                return getDatabase().queryRowsMapped(mapKey, outputClass, selectionArgs);
             } catch (Exception e) {
                 ExceptionReporter.printStackTrace(e);
                 return null;
@@ -114,15 +96,9 @@ public abstract class ModelBasedRepository {
         );
     }
 
-    public <T> Future<T> selectRowAs(Class<T> outputType, String sql, String... args){
+    public <T> Future<List<T>> query(Class<T> outputType, String... args){
         return getExecutorService().submit(
-                () -> getDatabase().selectRowBySQL(outputType,sql,args)
-        );
-    }
-
-    public <T> Future<List<T>> selectRowMultiAs(Class<T> outputType, String sql, String... args){
-        return getExecutorService().submit(
-                () -> getDatabase().selectRowsBySQL(outputType,sql,args)
+                () -> getDatabase().query(outputType,args)
         );
     }
 

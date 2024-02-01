@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import pk.gov.pbs.database.annotations.Default;
 import pk.gov.pbs.database.annotations.NotNull;
@@ -385,7 +384,8 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
             }
             db.setTransactionSuccessful();
         } catch (SQLException sqlException){
-            ExceptionReporter.printStackTrace(sqlException);
+            db.endTransaction();
+            throw sqlException;
         } finally {
             db.endTransaction();
         }
@@ -415,6 +415,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
             }
             db.setTransactionSuccessful();
         } catch (SQLException sqlException){
+            db.endTransaction();
             ExceptionReporter.printStackTrace(sqlException);
         } finally {
             db.endTransaction();
@@ -422,11 +423,11 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         return ids;
     }
 
-    public Integer update(Object object) throws Exception {
+    public Integer update(Object object) throws SQLException, IllegalAccessException {
         Field pk = getPrimaryKeyField(object.getClass());
 
         if (pk == null)
-            throw new Exception("Provided object has no primary key, Can not proceed to update record");
+            throw new SQLException("Provided object has no primary key, Can not proceed to update record");
 
         return getWritableDatabase().update(
                 object.getClass().getSimpleName(),
@@ -436,14 +437,29 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         );
     }
 
-    public  <T> List<T> selectRowsBySQL(Class<T> outputType, String sql, String[] selectionArgs) {
+    public <T> List<T> query(Class<?> outputType, String... args){
+        String sql = "SELECT * FROM `"+outputType.getSimpleName()+"`";
+        if (args != null && args.length > 0) {
+            sql += " WHERE " + args[0];
+
+            if (args.length == 1)
+                return (List<T>) queryRawSql(outputType, sql, null);
+
+            String[] arg = new String[args.length - 1];
+            System.arraycopy(args, 1, arg, 0, args.length - 1);
+            return (List<T>) queryRawSql(outputType, sql, arg);
+        }
+        return (List<T>) queryRawSql(outputType, sql, null);
+    }
+
+    public <T> List<T> queryRawSql(Class<T> outputType, String rawSql, String... selectionArgs) {
         List<T> result = new ArrayList<T>();
 
-        sql = sql.toLowerCase();
-        if (sql.contains("{:table}"))
-            sql = sql.replace("{:table}", "`" + outputType.getSimpleName() + "`");
+        rawSql = rawSql.toLowerCase();
+        if (rawSql.contains("<table>"))
+            rawSql = rawSql.replace("<table>", "`" + outputType.getSimpleName() + "`");
 
-        Cursor c = getReadableDatabase().rawQuery(sql, selectionArgs);
+        Cursor c = getReadableDatabase().rawQuery(rawSql, selectionArgs);
         if (c.moveToFirst()){
             do {
                 try {
@@ -459,23 +475,106 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         return result;
     }
 
-    public <T> List<T> selectRows(Class<?> outputType, String selectionCriteria, String[] selectionArgs){
-        String sql = "SELECT * FROM `"+outputType.getSimpleName()+"`";
-        if (selectionCriteria != null && !selectionCriteria.isEmpty())
-            sql += " WHERE "+selectionCriteria;
-        return (List<T>) selectRowsBySQL(outputType, sql, selectionArgs);
+    public <T> T querySingle(Class<T> outputType,String selectionCriteria,String... selectionArgs) {
+        String sql = "SELECT * FROM `"+outputType.getSimpleName()+"` WHERE " + selectionCriteria;
+        return (T) querySingleRawSql(outputType, sql, selectionArgs);
     }
 
-    public  <K,V> HashMap<K,V> selectRowsMappedBySQL(String mapKey, Class<V> outputType, String sql, String[] selectionArgs) throws NoSuchFieldException {
+    public <T> T querySingleRawSql(Class<T> outputType, String rawSql, String... selectionArgs) {
+        T result = null;
+
+        rawSql = rawSql.toLowerCase();
+        if (rawSql.contains("<table>"))
+            rawSql = rawSql.replace("<table>", "`" + outputType.getSimpleName() + "`");
+
+        Cursor c = getReadableDatabase().rawQuery(rawSql, selectionArgs);
+        if (c.moveToFirst()){
+            do {
+                try {
+                    result = extractObjectFromCursor(outputType, c);
+                } catch (IllegalAccessException e) {
+                    ExceptionReporter.printStackTrace(e);
+                } catch (InstantiationException e) {
+                    ExceptionReporter.printStackTrace(e);
+                }
+            } while(c.moveToNext());
+        }
+        c.close();
+        return result;
+    }
+
+    public List<Map<String, String>> queryRowsAsMap(String sql, String... selectionArgs) {
+        List<Map<String, String>> result = new ArrayList<>();
+        Cursor c = getReadableDatabase().rawQuery(sql, selectionArgs);
+        if (c.moveToFirst()){
+            do {
+                Map<String, String> row = new HashMap<>();
+                for (String col : c.getColumnNames())
+                    row.put(col, c.getString(c.getColumnIndex(col)));
+                result.add(row);
+            } while(c.moveToNext());
+        }
+        c.close();
+        return result;
+    }
+
+    public List<String[]> queryRowsAsList(String sql, String... selectionArgs) {
+        List<String[]> result = new ArrayList<>();
+        Cursor c = getReadableDatabase().rawQuery(sql, selectionArgs);
+        if (c.moveToFirst()){
+            result.add(c.getColumnNames());
+            do {
+                String[] row = new String[c.getColumnCount()];
+                for (int i = 0; i < c.getColumnCount(); i++)
+                    row[i] = c.getString(c.getColumnIndex(result.get(0)[i]));
+                result.add(row);
+            } while(c.moveToNext());
+        }
+        c.close();
+        return result;
+    }
+
+    public <T> List<T[]> queryRowsWith(String sql, Extractor<T> extractor, String... selectionArgs) {
+        List<T[]> result = new ArrayList<>();
+        Cursor c = getReadableDatabase().rawQuery(sql, selectionArgs);
+        if (c.moveToFirst()){
+            do {
+                List<T> row = new ArrayList<>();
+                for (int i = 0; i < c.getColumnCount(); i++)
+                    row.add(extractor.extract(c, i));
+                result.add((T[]) row.toArray());
+            } while(c.moveToNext());
+        }
+        c.close();
+        return result;
+    }
+
+    public <K, V> HashMap<K, V> queryRowsMapped(String mapKey, Class<V> outputType, String... args) throws NoSuchFieldException {
+        String sql = "SELECT * FROM `" + outputType.getSimpleName() + "`";
+        if (args != null && args.length > 0) {
+            sql += " WHERE " + args[0];
+
+            if (args.length == 1)
+                return queryRowsMappedRawSQL(mapKey, outputType, sql, (String) null);
+
+            String[] newArgs = new String[args.length - 1];
+            System.arraycopy(args, 1, newArgs, 0, args.length - 1);
+            return queryRowsMappedRawSQL(mapKey, outputType, sql, newArgs);
+        }
+
+        return queryRowsMappedRawSQL(mapKey, outputType, sql, (String) null);
+    }
+
+    public  <K,V> HashMap<K,V> queryRowsMappedRawSQL(String mapKey, Class<V> outputType, String rawSql, String... selectionArgs) throws NoSuchFieldException {
         HashMap<K, V> result = new HashMap<>();
         Field keyField = mapKey == null ? DatabaseUtils.getPrimaryKeyField(outputType)
                 : outputType.getField(mapKey);
 
-        sql = sql.toLowerCase();
-        if (sql.contains("{:table}"))
-            sql = sql.replace("{:table}", "`" + outputType.getSimpleName() + "`");
+        rawSql = rawSql.toLowerCase();
+        if (rawSql.contains("<table>"))
+            rawSql = rawSql.replace("<table>", "`" + outputType.getSimpleName() + "`");
 
-        Cursor c = getReadableDatabase().rawQuery(sql, selectionArgs);
+        Cursor c = getReadableDatabase().rawQuery(rawSql, selectionArgs);
         if (c.moveToFirst()){
             do {
                 try {
@@ -492,47 +591,22 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         return result;
     }
 
-    public <K, V> HashMap<K, V> selectRowsMapped(String mapKey, Class<V> outputType, String selectionCriteria, String[] selectionArgs) throws NoSuchFieldException {
-        String sql = String.format("SELECT * FROM `%s` WHERE %s", outputType.getSimpleName(), selectionCriteria);
-        return selectRowsMappedBySQL(mapKey, outputType, sql, selectionArgs);
+    public <K, V> HashMap<K, List<V>> selectGroupedRows(String mapKey, Class<V> outputType, String selectionCriteria, String[] selectionArgs) throws NoSuchFieldException {
+        String sql = "SELECT * FROM `" + outputType.getSimpleName() + "`";
+        if (selectionCriteria != null && !selectionCriteria.isEmpty())
+            sql += " WHERE " + selectionCriteria;
+        return selectGroupedRowsRawSQL(mapKey, outputType, sql, selectionArgs);
     }
 
-    public  <T> T selectRowBySQL(Class<T> outputType, String sql, String[] selectionArgs) {
-        T result = null;
-
-        sql = sql.toLowerCase();
-        if (sql.contains("{:table}"))
-            sql = sql.replace("{:table}", "`" + outputType.getSimpleName() + "`");
-
-        Cursor c = getReadableDatabase().rawQuery(sql, selectionArgs);
-        if (c.moveToFirst()){
-            try {
-                result = extractObjectFromCursor(outputType, c);
-            } catch (IllegalAccessException e) {
-                ExceptionReporter.printStackTrace(e);
-            } catch (InstantiationException e) {
-                ExceptionReporter.printStackTrace(e);
-            }
-        }
-        c.close();
-        return result;
-    }
-
-    public <T> T selectRow(Class<T> outputType, String selectionCriteria, String[] selectionArgs){
-        String sql = String.format("SELECT * FROM `%s` WHERE %s", outputType.getSimpleName(), selectionCriteria);
-        return selectRowBySQL(outputType, sql, selectionArgs);
-
-    }
-
-    public  <K,V> HashMap<K, List<V>> selectGroupedRowsBySQL(String mapKey, Class<V> outputType, String sql, String[] selectionArgs) throws NoSuchFieldException {
+    public  <K,V> HashMap<K, List<V>> selectGroupedRowsRawSQL(String mapKey, Class<V> outputType, String rawSql, String[] selectionArgs) throws NoSuchFieldException {
         HashMap<K, List<V>> result = new HashMap<>();
         Field keyField = outputType.getField(mapKey);
 
-        sql = sql.toLowerCase();
-        if (sql.contains("{:table}"))
-            sql = sql.replace("{:table}", "`" + outputType.getSimpleName() + "`");
+        rawSql = rawSql.toLowerCase();
+        if (rawSql.contains("<table>"))
+            rawSql = rawSql.replace("<table>", "`" + outputType.getSimpleName() + "`");
 
-        Cursor c = getReadableDatabase().rawQuery(sql, selectionArgs);
+        Cursor c = getReadableDatabase().rawQuery(rawSql, selectionArgs);
         if (c.moveToFirst()){
             do {
                 try {
@@ -557,8 +631,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         return result;
     }
 
-    public <K, V> HashMap<K, List<V>> selectGroupedRows(String mapKey, Class<V> outputType, String selectionCriteria, String[] selectionArgs) throws NoSuchFieldException {
-        String sql = String.format("SELECT * FROM `%s` WHERE %s", outputType.getSimpleName(), selectionCriteria);
-        return selectGroupedRowsBySQL(mapKey, outputType, sql, selectionArgs);
+    public interface Extractor<T> {
+        T extract(Cursor cursor, int columnIndex);
     }
 }
