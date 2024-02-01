@@ -518,6 +518,21 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         return result;
     }
 
+    public <V> List<Map<String, V>> queryRowsAsMapWith(String sql, Extractor<V> extractor, String... selectionArgs) {
+        List<Map<String, V>> result = new ArrayList<>();
+        Cursor c = getReadableDatabase().rawQuery(sql, selectionArgs);
+        if (c.moveToFirst()){
+            do {
+                Map<String, V> row = new HashMap<>();
+                for (int i = 0; i < c.getColumnCount(); i++)
+                    row.put(c.getColumnName(i), extractor.extract(c, i));
+                result.add(row);
+            } while(c.moveToNext());
+        }
+        c.close();
+        return result;
+    }
+
     public List<String[]> queryRowsAsList(String sql, String... selectionArgs) {
         List<String[]> result = new ArrayList<>();
         Cursor c = getReadableDatabase().rawQuery(sql, selectionArgs);
