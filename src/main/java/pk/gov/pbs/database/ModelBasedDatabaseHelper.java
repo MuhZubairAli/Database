@@ -273,6 +273,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
                 }
             }
         }
+        
         queryBuilder.deleteCharAt(queryBuilder.length()-1).append(")");
         db.execSQL(queryBuilder.toString());
         if (uniqueConstraint.size() > 0) {
@@ -437,6 +438,15 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         );
     }
 
+    /**
+     * This method selects one or more object of specified model, if args has on value it will be treated as predicate for select statement
+     * if it has more than one args then first is predicate and rest are used as selection arguments (though these are optional and these arguments
+     * can be put into predicate)
+     * @param outputType model class
+     * @param args predicate and args
+     * @return List of models
+     * @param <T> Type of Model
+     */
     public <T> List<T> query(Class<?> outputType, String... args){
         String sql = "SELECT * FROM `"+outputType.getSimpleName()+"`";
         if (args != null && args.length > 0) {
@@ -452,6 +462,14 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         return (List<T>) queryRawSql(outputType, sql, null);
     }
 
+    /**
+     * This method is alternate of query(Class<>,String...) with raw select statement in case need to select some fields from model
+     * @param outputType
+     * @param rawSql
+     * @param selectionArgs
+     * @return
+     * @param <T>
+     */
     public <T> List<T> queryRawSql(Class<T> outputType, String rawSql, String... selectionArgs) {
         List<T> result = new ArrayList<T>();
 
@@ -475,11 +493,27 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         return result;
     }
 
+    /**
+     * This selects single row of Model from database
+     * @param outputType model class
+     * @param selectionCriteria selection criteria with or without selection args
+     * @param selectionArgs selection argument in case not specified in selection criteria
+     * @return output object of specified model
+     * @param <T> model type
+     */
     public <T> T querySingle(Class<T> outputType,String selectionCriteria,String... selectionArgs) {
         String sql = "SELECT * FROM `"+outputType.getSimpleName()+"` WHERE " + selectionCriteria;
         return (T) querySingleRawSql(outputType, sql, selectionArgs);
     }
 
+    /**
+     * This method selects single row of specified model from database, using custom select statement for specified fields in raw sql
+     * @param outputType output model class
+     * @param rawSql raw SQL
+     * @param selectionArgs selection arguments for raw sql if not in sql statement
+     * @return output object of raw sql and selection arge
+     * @param <T> output model type
+     */
     public <T> T querySingleRawSql(Class<T> outputType, String rawSql, String... selectionArgs) {
         T result = null;
 
@@ -503,9 +537,15 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         return result;
     }
 
-    public List<Map<String, String>> queryRowsAsMap(String sql, String... selectionArgs) {
+    /**
+     * This will return rows in List as HashMap of string to string against specified raw SQL
+     * @param rawSql raw SQK if select statement
+     * @param selectionArgs selection arguments if not specified in raw sql already
+     * @return List of Mapped Rows
+     */
+    public List<Map<String, String>> queryRowsAsMap(String rawSql, String... selectionArgs) {
         List<Map<String, String>> result = new ArrayList<>();
-        Cursor c = getReadableDatabase().rawQuery(sql, selectionArgs);
+        Cursor c = getReadableDatabase().rawQuery(rawSql, selectionArgs);
         if (c.moveToFirst()){
             do {
                 Map<String, String> row = new HashMap<>();
@@ -518,9 +558,17 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         return result;
     }
 
-    public <V> List<Map<String, V>> queryRowsAsMapWith(String sql, Extractor<V> extractor, String... selectionArgs) {
+    /**
+     * This method is alternative of queryRowsAsMap(String, String...) with only difference being value would be extractor using custom extractor
+     * @param rawSql select statement
+     * @param extractor implementation of Extractor with custom Object i,e ValueStore
+     * @param selectionArgs selection arguments for raw query
+     * @return List of rows as HashMap with custom type of Value
+     * @param <V> storage type for values
+     */
+    public <V> List<Map<String, V>> queryRowsAsMapWith(String rawSql, Extractor<V> extractor, String... selectionArgs) {
         List<Map<String, V>> result = new ArrayList<>();
-        Cursor c = getReadableDatabase().rawQuery(sql, selectionArgs);
+        Cursor c = getReadableDatabase().rawQuery(rawSql, selectionArgs);
         if (c.moveToFirst()){
             do {
                 Map<String, V> row = new HashMap<>();
@@ -533,9 +581,15 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         return result;
     }
 
-    public List<String[]> queryRowsAsList(String sql, String... selectionArgs) {
+    /**
+     * This method returns rows as Array of String, first row will always be column name as array of String
+     * @param rawSql select statement in SQL
+     * @param selectionArgs selection arguments for query
+     * @return List of Arrays
+     */
+    public List<String[]> queryRowsAsList(String rawSql, String... selectionArgs) {
         List<String[]> result = new ArrayList<>();
-        Cursor c = getReadableDatabase().rawQuery(sql, selectionArgs);
+        Cursor c = getReadableDatabase().rawQuery(rawSql, selectionArgs);
         if (c.moveToFirst()){
             result.add(c.getColumnNames());
             do {
@@ -564,6 +618,18 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         return result;
     }
 
+    /**
+     * This method will select the rows of given output model and specified criteria (optional) and returns HashMap of specified field
+     * from outputType as map key and complete row as value. Important Note: specified mapKey must be unique for all selected rows or else
+     * it will replace the records without any exception
+     * @param mapKey field from outputType against which result would be stored, If receives invalid entry then uses primary key as mapKey
+     * @param outputType type of model (it is also the table select query would be executed against)
+     * @param args if has one item then has selection criteria, if has more then 1st item is selectionCriteria others are selection args
+     * @return HashMap with mapKey (Unique, Field from Model)
+     * @param <K> type of Map Key
+     * @param <V> type of Map Value
+     * @throws NoSuchFieldException in case specified mapKey not found in Model Class or don't have primary key
+     */
     public <K, V> HashMap<K, V> queryRowsMapped(String mapKey, Class<V> outputType, String... args) throws NoSuchFieldException {
         String sql = "SELECT * FROM `" + outputType.getSimpleName() + "`";
         if (args != null && args.length > 0) {
@@ -580,6 +646,18 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         return queryRowsMappedRawSQL(mapKey, outputType, sql, (String) null);
     }
 
+    /**
+     * This is alternate of queryRowsMapped with parameter of raw SQL, Important Note: specified mapKey must be unique for all selected rows or else
+     * it will replace the records without any exception
+     * @param mapKey field from outputType against which result would be stored, If receives invalid entry then uses primary key as mapKey
+     * @param outputType type of model (it is also the table select query would be executed against)
+     * @param rawSql Raw SQL of Select statement
+     * @param selectionArgs if has one item then has selection criteria, if has more then 1st item is selectionCriteria
+     * @return HashMap with mapKey (Unique, Field from Model)
+     * @param <K> type of Map Key
+     * @param <V> type of Map Value
+     * @throws NoSuchFieldException in case the provided mapKey is not found as field within given type of value
+     */
     public  <K,V> HashMap<K,V> queryRowsMappedRawSQL(String mapKey, Class<V> outputType, String rawSql, String... selectionArgs) throws NoSuchFieldException {
         HashMap<K, V> result = new HashMap<>();
         Field keyField = mapKey == null ? DatabaseUtils.getPrimaryKeyField(outputType)
@@ -606,14 +684,35 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         return result;
     }
 
-    public <K, V> HashMap<K, List<V>> selectGroupedRows(String mapKey, Class<V> outputType, String selectionCriteria, String[] selectionArgs) throws NoSuchFieldException {
+    /**
+     * This method selects all records against specified criteria (optional) and group the records against specified mapKey into List and
+     * put all those lists in a Map against specified mapKey, in other words it is like queryRowsMapped method but supports multiple records
+     * against specified mapKey
+     * @param mapKey field from output model
+     * @param outputType output type (model class)
+     * @param args selection criteria with arguments (optional)
+     * @return Map of Lists according to given mapKey
+     * @param <K> Data Type of key of Map
+     * @param <V> Data Type of target modal
+     * @throws NoSuchFieldException in case given mapKey not found in outputType
+     */
+    public <K, V> HashMap<K, List<V>> selectGroupedRows(String mapKey, Class<V> outputType, String... args) throws NoSuchFieldException {
         String sql = "SELECT * FROM `" + outputType.getSimpleName() + "`";
-        if (selectionCriteria != null && !selectionCriteria.isEmpty())
-            sql += " WHERE " + selectionCriteria;
-        return selectGroupedRowsRawSQL(mapKey, outputType, sql, selectionArgs);
+        if (args != null && args.length > 0) {
+            sql += " WHERE " + args[0];
+
+            if (args.length == 1)
+                return selectGroupedRowsRawSQL(mapKey, outputType, sql, (String) null);
+
+            String[] newArgs = new String[args.length - 1];
+            System.arraycopy(args, 1, newArgs, 0, args.length - 1);
+            return selectGroupedRowsRawSQL(mapKey, outputType, sql, newArgs);
+        }
+
+        return selectGroupedRowsRawSQL(mapKey, outputType, sql, args);
     }
 
-    public  <K,V> HashMap<K, List<V>> selectGroupedRowsRawSQL(String mapKey, Class<V> outputType, String rawSql, String[] selectionArgs) throws NoSuchFieldException {
+    public  <K,V> HashMap<K, List<V>> selectGroupedRowsRawSQL(String mapKey, Class<V> outputType, String rawSql, String... selectionArgs) throws NoSuchFieldException {
         HashMap<K, List<V>> result = new HashMap<>();
         Field keyField = outputType.getField(mapKey);
 
