@@ -96,7 +96,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
 
     protected final ContentValues getContentValuesFromModel(Object o){
         ContentValues values = new ContentValues();
-        for (Field field : o.getClass().getFields()){
+        for (Field field : getAllFields(o.getClass())){
             try {
                 if (!field.isAccessible())
                     field.setAccessible(true);
@@ -111,7 +111,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
 
     public final <T> T extractObjectFromCursor(Class<T> type, Cursor c) throws IllegalAccessException, InstantiationException {
         T o = type.newInstance();
-        for (Field f : type.getFields()){
+        for (Field f : getAllFields(type)){
             if (!Modifier.isPrivate(f.getModifiers())) {
                 if (c.getColumnIndex(f.getName()) == -1)
                     continue;
@@ -273,7 +273,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
                 }
             }
         }
-        
+
         queryBuilder.deleteCharAt(queryBuilder.length()-1).append(")");
         db.execSQL(queryBuilder.toString());
         if (uniqueConstraint.size() > 0) {
@@ -523,15 +523,13 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
 
         Cursor c = getReadableDatabase().rawQuery(rawSql, selectionArgs);
         if (c.moveToFirst()){
-            do {
-                try {
-                    result = extractObjectFromCursor(outputType, c);
-                } catch (IllegalAccessException e) {
-                    ExceptionReporter.printStackTrace(e);
-                } catch (InstantiationException e) {
-                    ExceptionReporter.printStackTrace(e);
-                }
-            } while(c.moveToNext());
+            try {
+                result = extractObjectFromCursor(outputType, c);
+            } catch (IllegalAccessException e) {
+                ExceptionReporter.printStackTrace(e);
+            } catch (InstantiationException e) {
+                ExceptionReporter.printStackTrace(e);
+            }
         }
         c.close();
         return result;
@@ -740,6 +738,43 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
                     ExceptionReporter.printStackTrace(e);
                 }
             } while(c.moveToNext());
+        }
+        c.close();
+        return result;
+    }
+
+    /**
+     * This method will return count for specified model class and args (optional). If args[0] is treated as selectionCriteria and rest as selection args
+     * @param modelClass type of model class
+     * @param args selection args (first as selection criteria and rest as selection args)
+     * @return null if query failed else long as count of rows from specified modelClass
+     */
+    public Long getCount(Class<?> modelClass, String... args){
+        String sql = "SELECT COUNT(*) FROM `" + modelClass.getSimpleName() + "`";
+        if (args != null && args.length > 0) {
+            sql += " WHERE " + args[0];
+
+            if (args.length == 1)
+                return getCount(sql, null);
+
+            String[] newArgs = new String[args.length - 1];
+            System.arraycopy(args, 1, newArgs, 0, args.length - 1);
+            return getCount(sql, newArgs);
+        }
+        return getCount(sql, args);
+    }
+
+    /**
+     * This is alternate of method getCount(Class<?> modelClass, String... args) with raw SQL in case if count has complex query i,e joined multiple tables
+     * @param rawSql select sql statement for count
+     * @param args selection args
+     * @return null if query failed else long as count
+     */
+    public Long getCount(String rawSql, String[] args){
+        Long result = null;
+        Cursor c = getReadableDatabase().rawQuery(rawSql, args);
+        if (c.moveToFirst()){
+            result = c.getLong(0);
         }
         c.close();
         return result;
