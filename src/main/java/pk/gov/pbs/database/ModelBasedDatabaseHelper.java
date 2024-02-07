@@ -31,7 +31,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         super(context, dbName, null, dbVersion);
     }
 
-    private Field[] getAllFields(Class<?> modelClass, boolean includePrivateFields){
+    public Field[] getAllFields(Class<?> modelClass, boolean includePrivateFields){
         Map<String, Field> fieldsMap = new HashMap<>();
         for (Field field : modelClass.getDeclaredFields()) {
             if (includePrivateFields || !Modifier.isPrivate(field.getModifiers()))
@@ -694,23 +694,23 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
      * @param <V> Data Type of target modal
      * @throws NoSuchFieldException in case given mapKey not found in outputType
      */
-    public <K, V> HashMap<K, List<V>> selectGroupedRows(String mapKey, Class<V> outputType, String... args) throws NoSuchFieldException {
+    public <K, V> HashMap<K, List<V>> queryGroupedRows(String mapKey, Class<V> outputType, String... args) throws NoSuchFieldException {
         String sql = "SELECT * FROM `" + outputType.getSimpleName() + "`";
         if (args != null && args.length > 0) {
             sql += " WHERE " + args[0];
 
             if (args.length == 1)
-                return selectGroupedRowsRawSQL(mapKey, outputType, sql, (String) null);
+                return queryGroupedRowsRawSQL(mapKey, outputType, sql, (String) null);
 
             String[] newArgs = new String[args.length - 1];
             System.arraycopy(args, 1, newArgs, 0, args.length - 1);
-            return selectGroupedRowsRawSQL(mapKey, outputType, sql, newArgs);
+            return queryGroupedRowsRawSQL(mapKey, outputType, sql, newArgs);
         }
 
-        return selectGroupedRowsRawSQL(mapKey, outputType, sql, args);
+        return queryGroupedRowsRawSQL(mapKey, outputType, sql, args);
     }
 
-    public  <K,V> HashMap<K, List<V>> selectGroupedRowsRawSQL(String mapKey, Class<V> outputType, String rawSql, String... selectionArgs) throws NoSuchFieldException {
+    public  <K,V> HashMap<K, List<V>> queryGroupedRowsRawSQL(String mapKey, Class<V> outputType, String rawSql, String... selectionArgs) throws NoSuchFieldException {
         HashMap<K, List<V>> result = new HashMap<>();
         Field keyField = outputType.getField(mapKey);
 
