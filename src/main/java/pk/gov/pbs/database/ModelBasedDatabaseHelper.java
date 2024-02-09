@@ -780,6 +780,51 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         return result;
     }
 
+    public <T> T queryWith(String rawSql, Extractor<T> extractor, String... selectionArgs) {
+        T result = null;
+        Cursor c = getReadableDatabase().rawQuery(rawSql, selectionArgs);
+        if (c.getCount() > 0 && c.moveToFirst())
+            result = extractor.extract(c, 0);
+        c.close();
+        return result;
+    }
+
+    public String queryString(String rawSql, String... selectionArgs) {
+        String result = null;
+        Cursor c = getReadableDatabase().rawQuery(rawSql, selectionArgs);
+        if (c.getCount() > 0 && c.moveToFirst())
+            result = c.getString(0);
+        c.close();
+        return result;
+    }
+
+    public Integer queryInteger(String rawSql, String... selectionArgs) {
+        Integer result = null;
+        Cursor c = getReadableDatabase().rawQuery(rawSql, selectionArgs);
+        if (c.getCount() > 0 && c.moveToFirst())
+            result = c.getInt(0);
+        c.close();
+        return result;
+    }
+
+    public Long queryLong(String rawSql, String... selectionArgs) {
+        Long result = null;
+        Cursor c = getReadableDatabase().rawQuery(rawSql, selectionArgs);
+        if (c.getCount() > 0 && c.moveToFirst())
+            result = c.getLong(0);
+        c.close();
+        return result;
+    }
+
+    public Double queryDouble(String rawSql, String... selectionArgs) {
+        Double result = null;
+        Cursor c = getReadableDatabase().rawQuery(rawSql, selectionArgs);
+        if (c.getCount() > 0 && c.moveToFirst())
+            result = c.getDouble(0);
+        c.close();
+        return result;
+    }
+
     public interface Extractor<T> {
         T extract(Cursor cursor, int columnIndex);
     }
