@@ -54,7 +54,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
     }
 
     @NonNull
-    private Field[] getAllFields(Class<?> modelClass){
+    public Field[] getAllFields(Class<?> modelClass){
         return getAllFields(modelClass, false);
     }
     protected final String getSQLiteDataTypeFrom(Class<?> type) throws UnsupportedDataType {
@@ -737,6 +737,77 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
                 } catch (InstantiationException e) {
                     ExceptionReporter.printStackTrace(e);
                 }
+            } while(c.moveToNext());
+        }
+        c.close();
+        return result;
+    }
+
+    /**
+     * This method's name explain its functionality as follow
+     *      query -> means execute as select statement
+     *      Mapped -> return output as map
+     *      RowsAsArray -> means turns rows into array (of strings)
+     *      RawSQL -> mean accepts raw sql query along with selection args
+     * @param mapKey column from selection list which is used as key in output map (must be unique for each row else rows will be overwritten)
+     * @param rawSql select statement as raw sql
+     * @param selectionArgs selection arguments (if applicable)
+     * @return HashMap of result
+     * @throws NoSuchFieldException in case specified mapKey is not found in selection list
+     */
+    public HashMap<String, String[]> queryMappedRowsAsArrayRawSQL(String mapKey, String rawSql, String... selectionArgs) throws NoSuchFieldException {
+        HashMap<String, String[]> result = new HashMap<>();
+
+        Cursor c = getReadableDatabase().rawQuery(rawSql, selectionArgs);
+        if(c.getColumnIndex(mapKey) == -1)
+            throw new NoSuchFieldException("Specified mapKey '"+mapKey+"' not found in result");
+
+        result.put("columns", c.getColumnNames());
+        if (c.moveToFirst()){
+            do {
+                String[] row = new String[c.getColumnCount()];
+                int keyIndex = c.getColumnIndex(mapKey);
+                for (int i = 0; i < c.getColumnCount(); i++) {
+                    row[i] = c.getString(c.getColumnIndex(result.get("columns")[i]));
+                }
+                result.put(c.getString(keyIndex), row);
+            } while(c.moveToNext());
+        }
+        c.close();
+        return result;
+    }
+
+    /**
+     * This method as name suggests
+     *      query -> execute rasSql as select statement
+     *      Mapped -> returns output as HashMap
+     *      With -> uses Extractor for Templated value
+     *      RawSQL -> accepts raw sql query along with selection args
+     * it only accepts query where there are two fields in selection list, one is mapKey and other is value
+     * @param mapKey column from selection list which is used as key in output map (must be unique for each row else rows will be overwritten)
+     * @param rawSql select statement as raw sql
+     * @param extractor implementation of extraction method to get value in specified type
+     * @param selectionArgs selection arguments (if applicable)
+     * @return HashMap of result
+     * @param <T> Type of value field
+     * @throws NoSuchFieldException in case specified mapKey is not found in selection list
+     * @throws SQLException other sql exception
+     */
+    public <T> HashMap<String, T> queryMappedWithRawSQL(String mapKey, String rawSql, Extractor<T> extractor, String... selectionArgs) throws NoSuchFieldException, SQLException {
+        final HashMap<String, T> result = new HashMap<>();
+        Cursor c = getReadableDatabase().rawQuery(rawSql, selectionArgs);
+        if(c.getColumnIndex(mapKey) == -1)
+            throw new NoSuchFieldException("Specified mapKey '"+mapKey+"' not found in result");
+        if (c.getColumnCount() != 2)
+            throw new SQLException("Select statement should only contain two fields, one as key and other as value");
+        int keyIndex = c.getColumnIndex(mapKey);
+        int valueIndex = 0;
+        for (String key : c.getColumnNames())
+            if (!key.equalsIgnoreCase(mapKey))
+                valueIndex = c.getColumnIndex(key);
+        if (c.moveToFirst()){
+            do {
+                result.put(c.getString(keyIndex), extractor.extract(c,valueIndex));
             } while(c.moveToNext());
         }
         c.close();
