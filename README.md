@@ -18,6 +18,6 @@ It makes use of the following Annotations
 Multiple unique keys can be applied with different indexes. TSQL query for composite Primary Key works as expected with default ASC order for each column. But SQLite gives errors on the composite primary key.
 
 ## Todo
-  -[x] Add support for a custom query select statement by returning a List of HashMap(s) of resulting columns
-  -[] Implement support for custom name property in Table annotation (table name in createTable, CRUD methods, etc)
-  -[] Automatic consolidated version calculation for Database
+  - [x] Add support for a custom query select statement by returning a List of HashMap(s) of resulting columns
+  - [ ] Implement support for custom name property in Table annotation (table name in createTable, CRUD methods, etc)
+  - [ ] Automatic consolidated version calculation for Database
