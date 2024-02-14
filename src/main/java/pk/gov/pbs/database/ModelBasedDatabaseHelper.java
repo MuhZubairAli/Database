@@ -19,6 +19,7 @@ import java.util.Map;
 import pk.gov.pbs.database.annotations.Default;
 import pk.gov.pbs.database.annotations.NotNull;
 import pk.gov.pbs.database.annotations.PrimaryKey;
+import pk.gov.pbs.database.annotations.Table;
 import pk.gov.pbs.database.annotations.Unique;
 import pk.gov.pbs.database.exceptions.UnsupportedDataType;
 import pk.gov.pbs.utils.ExceptionReporter;
@@ -402,6 +403,8 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
                 );
     }
 
+
+
     public List<Long> replace(Object[] models){
         List<Long> ids = new ArrayList<>();
         SQLiteDatabase db = getWritableDatabase();
@@ -412,6 +415,28 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
                         models[i].getClass().getSimpleName(),
                         null,
                         getContentValuesFromModel(models[i])
+                ));
+            }
+            db.setTransactionSuccessful();
+        } catch (SQLException sqlException){
+            db.endTransaction();
+            ExceptionReporter.printStackTrace(sqlException);
+        } finally {
+            db.endTransaction();
+        }
+        return ids;
+    }
+
+    public List<Long> replace(List<?> models){
+        List<Long> ids = new ArrayList<>();
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try{
+            for (int i = 0; i < models.size(); i++){
+                ids.add(db.replaceOrThrow(
+                        models.get(i).getClass().getSimpleName(),
+                        null,
+                        getContentValuesFromModel(models.get(i))
                 ));
             }
             db.setTransactionSuccessful();
@@ -437,6 +462,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
                 new String[]{ pk.get(object).toString() }
         );
     }
+
 
     /**
      * This method selects one or more object of specified model, if args has on value it will be treated as predicate for select statement
@@ -814,6 +840,10 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
             result = c.getLong(0);
         c.close();
         return result;
+    }
+
+    public void executeMySQL(String q){
+        getWritableDatabase().execSQL(q);
     }
 
     public Double queryDouble(String rawSql, String... selectionArgs) {
