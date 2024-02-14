@@ -32,32 +32,11 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         super(context, dbName, null, dbVersion);
     }
 
-    public Field[] getAllFields(Class<?> modelClass, boolean includePrivateFields){
-        Map<String, Field> fieldsMap = new HashMap<>();
-        for (Field field : modelClass.getDeclaredFields()) {
-            if (includePrivateFields || !Modifier.isPrivate(field.getModifiers()))
-                fieldsMap.put(field.getName(), field);
-        }
-
-        while (modelClass != Object.class){
-            modelClass = modelClass.getSuperclass();
-            if (modelClass == null)
-                break;
-            for (Field field : modelClass.getDeclaredFields()){
-                if ((includePrivateFields || !Modifier.isPrivate(field.getModifiers())) && !fieldsMap.containsKey(field.getName()))
-                    fieldsMap.put(field.getName(), field);
-            }
-        }
-
-        Field[] fields = new Field[fieldsMap.values().size()];
-        fieldsMap.values().toArray(fields);
-        return fields;
-    }
-
     @NonNull
     public Field[] getAllFields(Class<?> modelClass){
-        return getAllFields(modelClass, false);
+        return DatabaseUtils.getAllFields(modelClass, false);
     }
+
     protected final String getSQLiteDataTypeFrom(Class<?> type) throws UnsupportedDataType {
         if (
                 type == String.class
@@ -403,8 +382,6 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
                 );
     }
 
-
-
     public List<Long> replace(Object[] models){
         List<Long> ids = new ArrayList<>();
         SQLiteDatabase db = getWritableDatabase();
@@ -490,11 +467,11 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
 
     /**
      * This method is alternate of query(Class<>,String...) with raw select statement in case need to select some fields from model
-     * @param outputType
-     * @param rawSql
-     * @param selectionArgs
-     * @return
-     * @param <T>
+     * @param outputType model class
+     * @param rawSql raw sql for of select statement
+     * @param selectionArgs selection argument
+     * @return list of result
+     * @param <T> type of result
      */
     public <T> List<T> queryRawSql(Class<T> outputType, String rawSql, String... selectionArgs) {
         List<T> result = new ArrayList<T>();
@@ -913,10 +890,6 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         return result;
     }
 
-    public void executeMySQL(String q){
-        getWritableDatabase().execSQL(q);
-    }
-
     public Double queryDouble(String rawSql, String... selectionArgs) {
         Double result = null;
         Cursor c = getReadableDatabase().rawQuery(rawSql, selectionArgs);
@@ -924,6 +897,10 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
             result = c.getDouble(0);
         c.close();
         return result;
+    }
+
+    public void executeMySQL(String q){
+        getWritableDatabase().execSQL(q);
     }
 
     public interface Extractor<T> {

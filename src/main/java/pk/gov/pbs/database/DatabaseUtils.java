@@ -3,9 +3,11 @@ package pk.gov.pbs.database;
 import androidx.annotation.Nullable;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -51,7 +53,29 @@ public class DatabaseUtils {
         return null;
     }
 
-    public static String[] getAllColumns(Class<?> model){
+    public static Field[] getAllFields(Class<?> modelClass, boolean includePrivateFields){
+        Map<String, Field> fieldsMap = new HashMap<>();
+        for (Field field : modelClass.getDeclaredFields()) {
+            if (includePrivateFields || !Modifier.isPrivate(field.getModifiers()))
+                fieldsMap.put(field.getName(), field);
+        }
+
+        while (modelClass != Object.class){
+            modelClass = modelClass.getSuperclass();
+            if (modelClass == null)
+                break;
+            for (Field field : modelClass.getDeclaredFields()){
+                if ((includePrivateFields || !Modifier.isPrivate(field.getModifiers())) && !fieldsMap.containsKey(field.getName()))
+                    fieldsMap.put(field.getName(), field);
+            }
+        }
+
+        Field[] fields = new Field[fieldsMap.values().size()];
+        fieldsMap.values().toArray(fields);
+        return fields;
+    }
+
+    public static String[] getAllColumnNames(Class<?> model){
         Field[] fields = model.getFields();
         String[] cols = new String[fields.length];
 
