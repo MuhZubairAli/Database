@@ -27,14 +27,64 @@ import pk.gov.pbs.utils.ExceptionReporter;
 import static pk.gov.pbs.database.DatabaseUtils.getPrimaryKeyField;
 
 public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
+    protected Class<?>[] models = null;
 
     public ModelBasedDatabaseHelper(Context context, String dbName, int dbVersion) {
         super(context, dbName, null, dbVersion);
     }
 
+    public ModelBasedDatabaseHelper(Context context, String dbName, Class<?>[] models){
+        this(context, dbName, getConsolidatedVersion(models));
+        this.models = models;
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db) {
+        if (models == null)
+            throw new RuntimeException("Can't use default onCreate(SQLiteDatabase) method because models not provided, either use appropriate constructor with models array or override onCreate(SQLiteDatabase)");
+
+        for (Class<?> m : getModels()){
+            try {
+                createTable(m, db);
+            } catch (UnsupportedDataType e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        if (models == null)
+            throw new RuntimeException("Can't use default onUpgrade(SQLiteDatabase) method because models not provided, either use appropriate constructor with models array or override onUpgrade(SQLiteDatabase)");
+
+        for (Class<?> m : getModels()){
+            dropTable(m, db);
+        }
+        onCreate(db);
+    }
+
+    public Class<?>[] getModels() {
+        return models;
+    }
+
+    protected static int getConsolidatedVersion(Class<?>[] models){
+        int sumTableVersion = 0;
+        for (Class<?> c : models) {
+            Table table = c.getAnnotation(Table.class);
+            if (table != null)
+                sumTableVersion += table.version();
+            else
+                sumTableVersion++;
+        }
+        return sumTableVersion;
+    }
     @NonNull
     public Field[] getAllFields(Class<?> modelClass){
         return DatabaseUtils.getAllFields(modelClass, false);
+    }
+
+    public static <T> T extractObjectFromCursor(Class<T> type, Cursor c) throws IllegalAccessException, InstantiationException {
+        return DatabaseUtils.extractObjectFromCursor(type, c, false);
     }
 
     protected final String getSQLiteDataTypeFrom(Class<?> type) throws UnsupportedDataType {
@@ -87,139 +137,6 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
             }
         }
         return values;
-    }
-
-    public final <T> T extractObjectFromCursor(Class<T> type, Cursor c) throws IllegalAccessException, InstantiationException {
-        T o = type.newInstance();
-        for (Field f : getAllFields(type)){
-            if (!Modifier.isPrivate(f.getModifiers())) {
-                if (c.getColumnIndex(f.getName()) == -1)
-                    continue;
-
-                if (!f.isAccessible())
-                    f.setAccessible(true);
-
-                switch (f.getType().getSimpleName()) {
-                    case "char":
-                    case "Character":
-                    case "String":
-                        f.set(o, c.getString(c.getColumnIndex(f.getName())));
-                        break;
-                    case "int":
-                        f.set(o, c.getInt(c.getColumnIndex(f.getName())));
-                        break;
-                    case "Integer":
-                        f.set(o, c.isNull(c.getColumnIndex(f.getName())) ? null :
-                                c.getInt(c.getColumnIndex(f.getName()))
-                        );
-                        break;
-                    case "long":
-                        f.set(o, c.getLong(c.getColumnIndex(f.getName())));
-                        break;
-                    case "Long":
-                        f.set(o, c.isNull(c.getColumnIndex(f.getName())) ? null :
-                                c.getLong(c.getColumnIndex(f.getName()))
-                        );
-                        break;
-                    case "double":
-                        f.set(o, c.getDouble(c.getColumnIndex(f.getName())));
-                        break;
-                    case "Double":
-                        f.set(o, c.isNull(c.getColumnIndex(f.getName())) ? null :
-                                c.getDouble(c.getColumnIndex(f.getName()))
-                        );
-                        break;
-                    case "boolean":
-                        f.set(o, c.getInt(c.getColumnIndex(f.getName())) == 1);
-                        break;
-                    case "Boolean":
-                        f.set(o, c.isNull(c.getColumnIndex(f.getName())) ? null :
-                                c.getInt(c.getColumnIndex(f.getName())) == 1
-                        );
-                        break;
-                    case "float":
-                        f.set(o, c.getFloat(c.getColumnIndex(f.getName())));
-                        break;
-                    case "Float":
-                        f.set(o, c.isNull(c.getColumnIndex(f.getName())) ? null :
-                                c.getFloat(c.getColumnIndex(f.getName()))
-                        );
-                        break;
-                    case "short":
-                        f.set(o, c.getShort(c.getColumnIndex(f.getName())));
-                        break;
-                    case "Short":
-                        f.set(o, c.isNull(c.getColumnIndex(f.getName())) ? null :
-                                c.getShort(c.getColumnIndex(f.getName()))
-                        );
-                        break;
-                    case "byte[]":
-                        f.set(o, c.getBlob(c.getColumnIndex(f.getName())));
-                        break;
-                    case "Byte[]":
-                        f.set(o, c.isNull(c.getColumnIndex(f.getName())) ? null :
-                                c.getBlob(c.getColumnIndex(f.getName()))
-                        );
-                        break;
-                }
-            }
-        }
-        return o;
-    }
-
-    protected final <T> T extractFieldFromCursor(Class<T> type, Cursor c, Integer columnIndex) throws ClassCastException {
-        T o = null;
-
-        switch (type.getSimpleName()) {
-            case "char":
-            case "Character":
-            case "String":
-                o = (T) String.valueOf(c.getString(columnIndex));
-                break;
-            case "Integer":
-                o = c.isNull(columnIndex) ? null :
-                        (T) Integer.valueOf(c.getInt(columnIndex));
-            case "int":
-                o = (T) Integer.valueOf(c.getInt(columnIndex));
-                break;
-            case "Long":
-                o = c.isNull(columnIndex) ? null :
-                        (T) Long.valueOf(c.getLong(columnIndex));
-            case "long":
-                o = (T) Long.valueOf(c.getLong(columnIndex));
-                break;
-            case "Double":
-                o = c.isNull(columnIndex) ? null :
-                        (T) Double.valueOf(c.getDouble(columnIndex));
-            case "double":
-                o = (T) Double.valueOf(c.getDouble(columnIndex));
-                break;
-            case "Boolean":
-                o = c.isNull(columnIndex) ? null :
-                        (T) Boolean.valueOf(c.getInt(columnIndex)==1);
-            case "boolean":
-                o = (T) Boolean.valueOf(c.getInt(columnIndex)==1);
-                break;
-            case "Float":
-                o = c.isNull(columnIndex) ? null :
-                        (T) Float.valueOf(c.getFloat(columnIndex));
-            case "float":
-                o = (T) Float.valueOf(c.getFloat(columnIndex));
-                break;
-            case "Short":
-                o = c.isNull(columnIndex) ? null :
-                        (T) Short.valueOf(c.getShort(columnIndex));
-            case "short":
-                o = (T) Short.valueOf(c.getShort(columnIndex));
-                break;
-            case "Byte[]":
-                o = c.isNull(columnIndex) ? null :
-                        (T) c.getBlob(columnIndex);
-            case "byte[]":
-                o = (T) c.getBlob(columnIndex);
-                break;
-        }
-        return o;
     }
 
     protected void createTable(Class<?> modelClass, SQLiteDatabase db) throws UnsupportedDataType {
@@ -440,9 +357,8 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         );
     }
 
-
     /**
-     * This method selects one or more object of specified model, if args has on value it will be treated as predicate for select statement
+     * This method selects one or more object of specified model, if args has one value it will be treated as predicate for select statement
      * if it has more than one args then first is predicate and rest are used as selection arguments (though these are optional and these arguments
      * can be put into predicate)
      * @param outputType model class
@@ -490,6 +406,53 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
                 } catch (InstantiationException e) {
                     ExceptionReporter.printStackTrace(e);
                 }
+            } while(c.moveToNext());
+        }
+        c.close();
+        return result;
+    }
+
+    /**
+     * This method selects one or more object of specified model, args must have at least one value, it will be treated as table name against
+     * which select statement is executed, second value in args is treated as predicate for select statement
+     * if it has more than two args then first two are table name and predicate and rest are used
+     * as selection arguments (though these are optional and these arguments can be put into predicate itself)
+     * @param args predicate and args (at least one)
+     * @return List of models
+     * @param <T> Type of Model
+     */
+    public <T> List<T> queryWith(String[] args, ObjectExtractor<T> extractor){
+        String sql = "SELECT * FROM `"+args[0]+"`";
+        if (args.length > 1) {
+            sql += " WHERE " + args[1];
+
+            if (args.length == 2)
+                return queryRawSqlWith(sql, null, extractor);
+
+            String[] arg = new String[args.length - 2];
+            System.arraycopy(args, 1, arg, 0, args.length - 2);
+            return queryRawSqlWith(sql, arg, extractor);
+        }
+
+        return queryRawSqlWith(sql, null, extractor);
+    }
+
+    /**
+     * This method selects one or more object of specified model using object extractor
+     * can be put into predicate)
+     * @param extractor implementation of ObjectExtractor
+     * @param rawSql raw sql of select statement
+     * @param args predicate and args
+     * @return List of models
+     * @param <T> Type of Model
+     */
+    public <T> List<T> queryRawSqlWith(String rawSql, String[] args, ObjectExtractor<T> extractor){
+        List<T> result = new ArrayList<T>();
+
+        Cursor c = getReadableDatabase().rawQuery(rawSql, args);
+        if (c.moveToFirst()){
+            do {
+                result.add(extractor.extract(c));
             } while(c.moveToNext());
         }
         c.close();
@@ -905,5 +868,9 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
 
     public interface Extractor<T> {
         T extract(Cursor cursor, int columnIndex);
+    }
+
+    public interface ObjectExtractor<T> {
+        T extract(Cursor cursor);
     }
 }

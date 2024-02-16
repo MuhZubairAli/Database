@@ -1,5 +1,7 @@
 package pk.gov.pbs.database;
 
+import static pk.gov.pbs.database.DatabaseUtils.extractFieldFromCursor;
+
 import android.app.Application;
 import android.database.Cursor;
 import java.util.ArrayList;
@@ -71,7 +73,7 @@ public abstract class ModelBasedRepository {
                     T result = null;
                     Cursor cursor = getDatabase().getReadableDatabase().rawQuery(sql, args);
                     if (cursor.moveToFirst()) {
-                        result = getDatabase().extractFieldFromCursor(outputType, cursor, 0);
+                        result = extractFieldFromCursor(outputType, cursor, 0);
                     }
                     cursor.close();
                     return result;
@@ -86,7 +88,7 @@ public abstract class ModelBasedRepository {
                     List<T> result = new ArrayList<>();
                     if (cursor.moveToFirst()) {
                         do {
-                            result.add(getDatabase().extractFieldFromCursor(outputType, cursor, 0));
+                            result.add(extractFieldFromCursor(outputType, cursor, 0));
                         } while (cursor.moveToNext());
                         cursor.close();
                         return result;
