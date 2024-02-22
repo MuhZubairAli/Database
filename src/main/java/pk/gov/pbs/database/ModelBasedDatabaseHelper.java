@@ -862,8 +862,8 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
         return result;
     }
 
-    public void executeMySQL(String q){
-        getWritableDatabase().execSQL(q);
+    public void execSql(String query, Object... args){
+        getWritableDatabase().execSQL(query, args);
     }
 
     public interface Extractor<T> {
