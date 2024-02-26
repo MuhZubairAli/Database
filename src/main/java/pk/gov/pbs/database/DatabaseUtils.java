@@ -233,9 +233,9 @@ public class DatabaseUtils {
         try{
             return future.get();
         } catch (InterruptedException e) {
-            ExceptionReporter.printStackTrace(e);
+            ExceptionReporter.handle(e);
         } catch (ExecutionException e) {
-            ExceptionReporter.printStackTrace(e);
+            ExceptionReporter.handle(e);
         }
         return null;
     }

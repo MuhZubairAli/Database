@@ -61,7 +61,7 @@ public abstract class ModelBasedRepository {
             try {
                 return getDatabase().queryRowsMapped(mapKey, outputClass, selectionArgs);
             } catch (Exception e) {
-                ExceptionReporter.printStackTrace(e);
+                ExceptionReporter.handle(e);
                 return null;
             }
         });

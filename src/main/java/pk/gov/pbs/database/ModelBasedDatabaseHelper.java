@@ -133,7 +133,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
 
                 values.put(field.getName(), field.get(o) != null ? field.get(o).toString() : null);
             } catch (Exception e) {
-                ExceptionReporter.printStackTrace(e);
+                ExceptionReporter.handle(e);
             }
         }
         return values;
@@ -252,7 +252,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
             }
             db.setTransactionSuccessful();
         } catch (SQLException sqlException){
-            ExceptionReporter.printStackTrace(sqlException);
+            ExceptionReporter.handle(sqlException);
         } finally {
             db.endTransaction();
         }
@@ -314,7 +314,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
             db.setTransactionSuccessful();
         } catch (SQLException sqlException){
             db.endTransaction();
-            ExceptionReporter.printStackTrace(sqlException);
+            ExceptionReporter.handle(sqlException);
         } finally {
             db.endTransaction();
         }
@@ -336,7 +336,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
             db.setTransactionSuccessful();
         } catch (SQLException sqlException){
             db.endTransaction();
-            ExceptionReporter.printStackTrace(sqlException);
+            ExceptionReporter.handle(sqlException);
         } finally {
             db.endTransaction();
         }
@@ -402,9 +402,9 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
                 try {
                     result.add(extractObjectFromCursor(outputType, c));
                 } catch (IllegalAccessException e) {
-                    ExceptionReporter.printStackTrace(e);
+                    ExceptionReporter.handle(e);
                 } catch (InstantiationException e) {
-                    ExceptionReporter.printStackTrace(e);
+                    ExceptionReporter.handle(e);
                 }
             } while(c.moveToNext());
         }
@@ -492,9 +492,9 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
             try {
                 result = extractObjectFromCursor(outputType, c);
             } catch (IllegalAccessException e) {
-                ExceptionReporter.printStackTrace(e);
+                ExceptionReporter.handle(e);
             } catch (InstantiationException e) {
-                ExceptionReporter.printStackTrace(e);
+                ExceptionReporter.handle(e);
             }
         }
         c.close();
@@ -638,9 +638,9 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
                     V obj = extractObjectFromCursor(outputType, c);
                     result.put((K) keyField.get(obj), obj);
                 } catch (IllegalAccessException e) {
-                    ExceptionReporter.printStackTrace(e);
+                    ExceptionReporter.handle(e);
                 } catch (InstantiationException e) {
-                    ExceptionReporter.printStackTrace(e);
+                    ExceptionReporter.handle(e);
                 }
             } while(c.moveToNext());
         }
@@ -699,9 +699,9 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
                         }
                     }
                 } catch (IllegalAccessException e) {
-                    ExceptionReporter.printStackTrace(e);
+                    ExceptionReporter.handle(e);
                 } catch (InstantiationException e) {
-                    ExceptionReporter.printStackTrace(e);
+                    ExceptionReporter.handle(e);
                 }
             } while(c.moveToNext());
         }
