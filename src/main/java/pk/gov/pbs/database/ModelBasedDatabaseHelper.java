@@ -547,6 +547,9 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
 
     /**
      * This method returns rows as Array of String, first row will always be column name as array of String
+     * As name indicates that
+     * query -> it expects select statement
+     * RowsAsList -> it will populate rows as list (or array) instead of model object
      * @param rawSql select statement in SQL
      * @param selectionArgs selection arguments for query
      * @return List of Arrays
