@@ -50,7 +50,8 @@ public class DatabaseUtils {
                 }
             }
         }
-        if (uniqueConstraint.size() > 0)
+
+        if (!uniqueConstraint.isEmpty())
             return uniqueConstraint;
         return null;
     }
@@ -91,7 +92,7 @@ public class DatabaseUtils {
     public static <T> T extractObjectFromCursor(Class<T> type, Cursor c, boolean includePrivateFields) throws IllegalAccessException, InstantiationException {
         T o = type.newInstance();
         for (Field f : getAllFields(type, includePrivateFields)){
-            if (!Modifier.isPrivate(f.getModifiers())) {
+            if (includePrivateFields || !Modifier.isPrivate(f.getModifiers())) {
                 if (c.getColumnIndex(f.getName()) == -1)
                     continue;
 
