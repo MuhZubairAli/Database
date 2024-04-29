@@ -88,6 +88,19 @@ public class DatabaseUtils {
 
         return cols;
     }
+    public static List<String[]> extractFromCursor(Cursor cursor) {
+        List<String[]> result = new ArrayList<>();
+        if (cursor.moveToFirst()){
+            result.add(cursor.getColumnNames());
+            do {
+                String[] row = new String[cursor.getColumnCount()];
+                for (int i = 0; i < cursor.getColumnCount(); i++)
+                    row[i] = cursor.getString(cursor.getColumnIndex(result.get(0)[i]));
+                result.add(row);
+            } while(cursor.moveToNext());
+        }
+        return result;
+    }
 
     public static <T> T extractObjectFromCursor(Class<T> type, Cursor c, boolean includePrivateFields) throws IllegalAccessException, InstantiationException {
         T o = type.newInstance();
