@@ -1,11 +1,15 @@
 package pk.gov.pbs.database;
 
+import android.database.Cursor;
+
 import androidx.annotation.Nullable;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -46,12 +50,35 @@ public class DatabaseUtils {
                 }
             }
         }
-        if (uniqueConstraint.size() > 0)
+
+        if (!uniqueConstraint.isEmpty())
             return uniqueConstraint;
         return null;
     }
 
-    public static String[] getAllColumns(Class<?> model){
+    public static Field[] getAllFields(Class<?> modelClass, boolean includePrivateFields){
+        Map<String, Field> fieldsMap = new HashMap<>();
+        for (Field field : modelClass.getDeclaredFields()) {
+            if (includePrivateFields || !Modifier.isPrivate(field.getModifiers()))
+                fieldsMap.put(field.getName(), field);
+        }
+
+        while (modelClass != Object.class){
+            modelClass = modelClass.getSuperclass();
+            if (modelClass == null)
+                break;
+            for (Field field : modelClass.getDeclaredFields()){
+                if ((includePrivateFields || !Modifier.isPrivate(field.getModifiers())) && !fieldsMap.containsKey(field.getName()))
+                    fieldsMap.put(field.getName(), field);
+            }
+        }
+
+        Field[] fields = new Field[fieldsMap.values().size()];
+        fieldsMap.values().toArray(fields);
+        return fields;
+    }
+
+    public static String[] getAllColumnNames(Class<?> model){
         Field[] fields = model.getFields();
         String[] cols = new String[fields.length];
 
@@ -60,6 +87,152 @@ public class DatabaseUtils {
         }
 
         return cols;
+    }
+    
+    public static List<String[]> extractFromCursor(Cursor cursor) {
+        List<String[]> result = new ArrayList<>();
+        if (cursor.moveToFirst()){
+            result.add(cursor.getColumnNames());
+            do {
+                String[] row = new String[cursor.getColumnCount()];
+                for (int i = 0; i < cursor.getColumnCount(); i++)
+                    row[i] = cursor.getString(cursor.getColumnIndex(result.get(0)[i]));
+                result.add(row);
+            } while(cursor.moveToNext());
+        }
+        return result;
+    }
+
+    public static <T> T extractObjectFromCursor(Class<T> type, Cursor c, boolean includePrivateFields) throws IllegalAccessException, InstantiationException {
+        T o = type.newInstance();
+        for (Field f : getAllFields(type, includePrivateFields)){
+            if (includePrivateFields || !Modifier.isPrivate(f.getModifiers())) {
+                if (c.getColumnIndex(f.getName()) == -1)
+                    continue;
+
+                if (!f.isAccessible())
+                    f.setAccessible(true);
+
+                switch (f.getType().getSimpleName()) {
+                    case "char":
+                    case "Character":
+                    case "String":
+                        f.set(o, c.getString(c.getColumnIndex(f.getName())));
+                        break;
+                    case "int":
+                        f.set(o, c.getInt(c.getColumnIndex(f.getName())));
+                        break;
+                    case "Integer":
+                        f.set(o, c.isNull(c.getColumnIndex(f.getName())) ? null :
+                                c.getInt(c.getColumnIndex(f.getName()))
+                        );
+                        break;
+                    case "long":
+                        f.set(o, c.getLong(c.getColumnIndex(f.getName())));
+                        break;
+                    case "Long":
+                        f.set(o, c.isNull(c.getColumnIndex(f.getName())) ? null :
+                                c.getLong(c.getColumnIndex(f.getName()))
+                        );
+                        break;
+                    case "double":
+                        f.set(o, c.getDouble(c.getColumnIndex(f.getName())));
+                        break;
+                    case "Double":
+                        f.set(o, c.isNull(c.getColumnIndex(f.getName())) ? null :
+                                c.getDouble(c.getColumnIndex(f.getName()))
+                        );
+                        break;
+                    case "boolean":
+                        f.set(o, c.getInt(c.getColumnIndex(f.getName())) == 1);
+                        break;
+                    case "Boolean":
+                        f.set(o, c.isNull(c.getColumnIndex(f.getName())) ? null :
+                                c.getInt(c.getColumnIndex(f.getName())) == 1
+                        );
+                        break;
+                    case "float":
+                        f.set(o, c.getFloat(c.getColumnIndex(f.getName())));
+                        break;
+                    case "Float":
+                        f.set(o, c.isNull(c.getColumnIndex(f.getName())) ? null :
+                                c.getFloat(c.getColumnIndex(f.getName()))
+                        );
+                        break;
+                    case "short":
+                        f.set(o, c.getShort(c.getColumnIndex(f.getName())));
+                        break;
+                    case "Short":
+                        f.set(o, c.isNull(c.getColumnIndex(f.getName())) ? null :
+                                c.getShort(c.getColumnIndex(f.getName()))
+                        );
+                        break;
+                    case "byte[]":
+                        f.set(o, c.getBlob(c.getColumnIndex(f.getName())));
+                        break;
+                    case "Byte[]":
+                        f.set(o, c.isNull(c.getColumnIndex(f.getName())) ? null :
+                                c.getBlob(c.getColumnIndex(f.getName()))
+                        );
+                        break;
+                }
+            }
+        }
+        return o;
+    }
+
+    public static <T> T extractFieldFromCursor(Class<T> type, Cursor c, Integer columnIndex) throws ClassCastException {
+        T o = null;
+        switch (type.getSimpleName()) {
+            case "char":
+            case "Character":
+            case "String":
+                o = (T) c.getString(columnIndex);
+                break;
+            case "Integer":
+                o = c.isNull(columnIndex) ? null :
+                        (T) Integer.valueOf(c.getInt(columnIndex));
+            case "int":
+                o = (T) Integer.valueOf(c.getInt(columnIndex));
+                break;
+            case "Long":
+                o = c.isNull(columnIndex) ? null :
+                        (T) Long.valueOf(c.getLong(columnIndex));
+            case "long":
+                o = (T) Long.valueOf(c.getLong(columnIndex));
+                break;
+            case "Double":
+                o = c.isNull(columnIndex) ? null :
+                        (T) Double.valueOf(c.getDouble(columnIndex));
+            case "double":
+                o = (T) Double.valueOf(c.getDouble(columnIndex));
+                break;
+            case "Boolean":
+                o = c.isNull(columnIndex) ? null :
+                        (T) Boolean.valueOf(c.getInt(columnIndex)==1);
+            case "boolean":
+                o = (T) Boolean.valueOf(c.getInt(columnIndex)==1);
+                break;
+            case "Float":
+                o = c.isNull(columnIndex) ? null :
+                        (T) Float.valueOf(c.getFloat(columnIndex));
+            case "float":
+                o = (T) Float.valueOf(c.getFloat(columnIndex));
+                break;
+            case "Short":
+                o = c.isNull(columnIndex) ? null :
+                        (T) Short.valueOf(c.getShort(columnIndex));
+            case "short":
+                o = (T) Short.valueOf(c.getShort(columnIndex));
+                break;
+            case "Byte[]":
+                o = c.isNull(columnIndex) ? null :
+                        (T) c.getBlob(columnIndex);
+            case "byte[]":
+                o = (T) c.getBlob(columnIndex);
+                break;
+        }
+        return o;
     }
 
     /**
@@ -75,9 +248,9 @@ public class DatabaseUtils {
         try{
             return future.get();
         } catch (InterruptedException e) {
-            ExceptionReporter.printStackTrace(e);
+            ExceptionReporter.handle(e);
         } catch (ExecutionException e) {
-            ExceptionReporter.printStackTrace(e);
+            ExceptionReporter.handle(e);
         }
         return null;
     }
