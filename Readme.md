@@ -21,3 +21,4 @@ Multiple unique keys can be applied with different indexes. TSQL query for compo
   - [x] Add support for a custom query select statement by returning a List of HashMap(s) of resulting columns
   - [ ] Implement support for custom name property in Table annotation (table name in createTable, CRUD methods, etc)
   - [ ] Automatic consolidated version calculation for Database
+  - [ ] Implement support for SerializedName(value="") for both local database and TSQL (This annotation is from GSON library for setting different name for field)
