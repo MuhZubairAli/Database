@@ -88,6 +88,7 @@ public class DatabaseUtils {
 
         return cols;
     }
+    
     public static List<String[]> extractFromCursor(Cursor cursor) {
         List<String[]> result = new ArrayList<>();
         if (cursor.moveToFirst()){
@@ -98,6 +99,14 @@ public class DatabaseUtils {
                     row[i] = cursor.getString(cursor.getColumnIndex(result.get(0)[i]));
                 result.add(row);
             } while(cursor.moveToNext());
+        }
+        return result;
+    }
+
+    public static HashMap<String,String> extractMapFromCursor(Cursor c) {
+        HashMap<String,String> result = new HashMap<>();
+        for (String column : c.getColumnNames()){
+            result.put(column, c.getString(c.getColumnIndex(column)));
         }
         return result;
     }
