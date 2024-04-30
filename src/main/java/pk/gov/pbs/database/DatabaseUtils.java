@@ -103,6 +103,14 @@ public class DatabaseUtils {
         return result;
     }
 
+    public static HashMap<String,String> extractMapFromCursor(Cursor c) {
+        HashMap<String,String> result = new HashMap<>();
+        for (String column : c.getColumnNames()){
+            result.put(column, c.getString(c.getColumnIndex(column)));
+        }
+        return result;
+    }
+
     public static <T> T extractObjectFromCursor(Class<T> type, Cursor c, boolean includePrivateFields) throws IllegalAccessException, InstantiationException {
         T o = type.newInstance();
         for (Field f : getAllFields(type, includePrivateFields)){
