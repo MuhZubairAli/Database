@@ -15,6 +15,7 @@ import java.util.concurrent.Future;
 
 import pk.gov.pbs.database.annotations.PrimaryKey;
 import pk.gov.pbs.database.annotations.Unique;
+import pk.gov.pbs.database.exceptions.ColumnNotFound;
 import pk.gov.pbs.utils.ExceptionReporter;
 
 public class DatabaseUtils {
@@ -103,6 +104,24 @@ public class DatabaseUtils {
         return result;
     }
 
+    public static Map<String, String[]> extractFromCursorMapped(String key, Cursor cursor) throws ColumnNotFound {
+        if (cursor.getColumnIndex(key) == -1)
+            throw new ColumnNotFound("Specified column '"+key+"' does not exists in cursor", cursor);
+
+        Map<String, String[]> result = new HashMap<>();
+        int keyIndex = cursor.getColumnIndex(key);
+
+        if (cursor.moveToFirst()){
+            do {
+                String[] row = new String[cursor.getColumnCount()];
+                for (int i = 0; i < cursor.getColumnCount(); i++)
+                    row[i] = cursor.getString(i);
+                result.put(cursor.getString(keyIndex), row);
+            } while(cursor.moveToNext());
+        }
+        return result;
+    }
+
     public static HashMap<String,String> extractMapFromCursor(Cursor c) {
         HashMap<String,String> result = new HashMap<>();
         for (String column : c.getColumnNames()){
@@ -124,6 +143,9 @@ public class DatabaseUtils {
                 switch (f.getType().getSimpleName()) {
                     case "char":
                     case "Character":
+                    case "char[]":
+                    case "Character[]":
+                    case "CharSequence":
                     case "String":
                         f.set(o, c.getString(c.getColumnIndex(f.getName())));
                         break;
@@ -167,9 +189,11 @@ public class DatabaseUtils {
                                 c.getFloat(c.getColumnIndex(f.getName()))
                         );
                         break;
+                    case "byte":
                     case "short":
                         f.set(o, c.getShort(c.getColumnIndex(f.getName())));
                         break;
+                    case "Byte":
                     case "Short":
                         f.set(o, c.isNull(c.getColumnIndex(f.getName())) ? null :
                                 c.getShort(c.getColumnIndex(f.getName()))
@@ -194,6 +218,9 @@ public class DatabaseUtils {
         switch (type.getSimpleName()) {
             case "char":
             case "Character":
+            case "char[]":
+            case "Character[]":
+            case "CharSequence":
             case "String":
                 o = (T) c.getString(columnIndex);
                 break;
@@ -227,9 +254,11 @@ public class DatabaseUtils {
             case "float":
                 o = (T) Float.valueOf(c.getFloat(columnIndex));
                 break;
+            case "Byte":
             case "Short":
                 o = c.isNull(columnIndex) ? null :
                         (T) Short.valueOf(c.getShort(columnIndex));
+            case "byte":
             case "short":
                 o = (T) Short.valueOf(c.getShort(columnIndex));
                 break;
