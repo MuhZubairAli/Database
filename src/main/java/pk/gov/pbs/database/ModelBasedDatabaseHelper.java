@@ -90,34 +90,38 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
     protected final String getSQLiteDataTypeFrom(Class<?> type) throws UnsupportedDataType {
         if (
                 type == String.class
-                        || type == char.class
-                        || type == Character.class
+                || type == char.class
+                || type == Character.class
+                || type == char[].class
+                || type == Character[].class
         )
             return " TEXT ";
         else if (
                 type == double.class
-                        ||type == Double.class
-                        || type == float.class
-                        || type == Float.class
+                ||type == Double.class
+                || type == float.class
+                || type == Float.class
         )
             return " REAL ";
         else if (
-                type == int.class
-                        || type == Integer.class
-                        || type == short.class
-                        || type == Short.class
-                        || type == long.class
-                        || type == Long.class
+                type == byte.class
+                || type == Byte.class
+                || type == short.class
+                || type == Short.class
+                || type == int.class
+                || type == Integer.class
+                || type == long.class
+                || type == Long.class
         )
             return " INTEGER ";
         else if (
                 type == boolean.class
-                        || type == Boolean.class
+                || type == Boolean.class
         )
             return " BOOLEAN ";
         else if (
                 type == byte[].class
-                        || type == Byte[].class
+                || type == Byte[].class
         )
             return " BLOB ";
         else
