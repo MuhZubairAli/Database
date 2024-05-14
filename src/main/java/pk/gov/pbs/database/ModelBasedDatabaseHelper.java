@@ -182,10 +182,6 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
             }
         }
 
-        //
-        //CONSTRAINT Test_PK PRIMARY KEY (a,b,c)
-
-
         if (!pkAutoIncremented && !pkConstraint.isEmpty()) {
             queryBuilder
                     .append(" CONSTRAINT `")
