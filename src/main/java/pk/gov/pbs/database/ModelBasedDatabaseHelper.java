@@ -94,6 +94,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
                 || type == Character.class
                 || type == char[].class
                 || type == Character[].class
+                || type == CharSequence.class
         )
             return " TEXT ";
         else if (
@@ -145,6 +146,8 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
 
     protected void createTable(Class<?> modelClass, SQLiteDatabase db) throws UnsupportedDataType {
         HashMap<String, ArrayList<String>> uniqueConstraint = new HashMap<>();
+        boolean pkAutoIncremented = false;
+        List<String> pkConstraint = new ArrayList<>();
         StringBuilder queryBuilder = new StringBuilder();
         queryBuilder.append("CREATE TABLE ").append(modelClass.getSimpleName()).append(" (");
         for (Field field : getAllFields(modelClass)){
@@ -153,8 +156,11 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
                         .append(getSQLiteDataTypeFrom(field.getType()));
                 PrimaryKey pk = field.getAnnotation(PrimaryKey.class);
                 if (pk != null){
-                    queryBuilder.append("PRIMARY KEY")
-                            .append(pk.autogenerate() ? " AUTOINCREMENT" : " ");
+                    if (pk.autogenerate() && !pkAutoIncremented) {
+                        queryBuilder.append("PRIMARY KEY AUTOINCREMENT");
+                        pkAutoIncremented = true;
+                    } else
+                        pkConstraint.add(field.getName());
                 }
                 Default ano = field.getAnnotation(Default.class);
                 if (ano != null){
@@ -163,6 +169,7 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
                 }
                 queryBuilder.append(field.getAnnotation(NotNull.class) == null ? "," : " NOT NULL,");
             }
+
             Unique uAno = field.getAnnotation(Unique.class);
             if (uAno != null){
                 if (uniqueConstraint.containsKey(uAno.index())){
@@ -173,6 +180,27 @@ public abstract class ModelBasedDatabaseHelper extends SQLiteOpenHelper {
                     uniqueConstraint.put(uAno.index(), cols);
                 }
             }
+        }
+
+        //
+        //CONSTRAINT Test_PK PRIMARY KEY (a,b,c)
+
+
+        if (!pkAutoIncremented && !pkConstraint.isEmpty()) {
+            queryBuilder
+                    .append(" CONSTRAINT `")
+                    .append(modelClass.getSimpleName())
+                    .append("_PK`")
+                    .append("  PRIMARY KEY (");
+
+            for (String pkCol : pkConstraint)
+                queryBuilder
+                        .append("`")
+                        .append(pkCol)
+                        .append("`,");
+
+            queryBuilder.deleteCharAt(queryBuilder.length()-1).append("),");
+
         }
 
         queryBuilder.deleteCharAt(queryBuilder.length()-1).append(")");
